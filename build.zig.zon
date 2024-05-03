@@ -1,0 +1,17 @@
+.{
+    // the name of your project
+    .name = "MPQExtractor",
+    // the version of your project
+    .version = "0.0.1",
+
+    .paths = .{""},
+    // the actual packages you need as dependencies of your project
+    .dependencies = .{
+        .bzip2 = .{
+            // the url to the release of the module
+            .url = "https://github.com/Wow-modding-Linux/bzip2/archive/refs/tags/bzip2-1.0.9.tar.gz",
+            // the hash of the module, this is not the checksum of the tarball
+            .hash = "122043846f2c596d7c7adb580750598f076eec10a1dc734d64d1ca195bf46dc9b65d",
+        },
+    },
+}
