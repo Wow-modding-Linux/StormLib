@@ -38,9 +38,7 @@ pub fn build(b: *std.Build) void {
         "src/SFilePatchArchives.cpp",
         "src/SFileReadFile.cpp",
         "src/SFileVerify.cpp",
-        "src/libtomcrypt/src/pk/rsa/rsa_verify_simple.c",
-        "src/libtomcrypt/src/misc/crypt_libc.c",
-    }, .flags = &.{"-D_7ZIP_ST"} });
+    }, .flags = &.{ "-D_7ZIP_ST", "-DUSE_LTM", "-DLTM_DESC" } });
 
     if (b.systemIntegrationOption("bz2", .{})) {
         storm.linkSystemLibrary("bz2");
@@ -56,35 +54,85 @@ pub fn build(b: *std.Build) void {
     if (b.systemIntegrationOption("z", .{})) {
         storm.linkSystemLibrary("z");
     } else {
-        // const z = b.dependency("z", .{
-        //     .target = target,
-        //     .optimize = optimize,
-        // });
-        // storm.linkLibrary(z);
-        // storm.linkLibrary(z.artifact("z"));
-    }
-    if (b.systemIntegrationOption("tommath", .{})) {
-        storm.linkSystemLibrary("tommath");
-    } else {
-        // const tommath = b.dependency("tommath", .{
-        //     .target = target,
-        //     .optimize = optimize,
-        // });
-        // storm.linkLibrary(tommath);
-        // storm.linkLibrary(tommath.artifact("tommath"));
+        const z_dep = b.dependency("z", .{});
+        const z = b.addStaticLibrary(.{
+            .name = "z",
+            .target = target,
+            .optimize = optimize,
+        });
+        z.addCSourceFiles(.{
+            .root = z_dep.path(""),
+            .files = &.{
+                "adler32.c", "compress.c", "crc32.c",    "deflate.c",
+                "gzclose.c", "gzlib.c",    "gzread.c",   "gzwrite.c",
+                "inflate.c", "infback.c",  "inftrees.c", "inffast.c",
+                "trees.c",   "uncompr.c",  "zutil.c",
+            },
+            .flags = &.{
+                "-DHAVE_SYS_TYPES_H", "-DHAVE_STDINT_H", "-DHAVE_STDDEF_H",
+                "-DZ_HAVE_UNISTD_H",
+            },
+        });
+        z.linkLibC();
+        storm.addIncludePath(z_dep.path(""));
+        storm.linkLibrary(z);
     }
 
     if (b.systemIntegrationOption("tomcrypt", .{})) {
         storm.linkSystemLibrary("tomcrypt");
     } else {
-        // const tomcrypt = b.dependency("tomcrypt", .{
-        //     .target = target,
-        //     .optimize = optimize,
-        // });
-        // storm.linkLibrary(tomcrypt);
-        // storm.linkLibrary(tomcrypt.artifact("tomcrypt"));
+        const tomcrypt_dep = b.dependency("tomcrypt", .{});
+        const tomcrypt = b.addStaticLibrary(.{
+            .name = "tomcrypt",
+            .target = target,
+            .optimize = optimize,
+        });
+        tomcrypt.addCSourceFiles(.{
+            .root = tomcrypt_dep.path(""),
+            .files = @import("./tomcrypt_src.zig").files,
+            .flags = &.{
+                "-DUSE_LTM",                     "-DLTM_DESC",           "-DLTC_SOURCE",
+                "-Wall",                         "-Wsign-compare",       "-Wshadow",
+                "-Wextra",                       "-Wsystem-headers",     "-Wbad-function-cast",
+                "-Wcast-align",                  "-Wstrict-prototypes",  "-Wpointer-arith",
+                "-Wdeclaration-after-statement", "-Wwrite-strings",      "-Wno-type-limits",
+                "-funroll-loops",                "-fomit-frame-pointer",
+            },
+        });
+        if (b.systemIntegrationOption("tommath", .{})) {
+            tomcrypt.linkSystemLibrary("tommath");
+        } else {
+            const tommath_dep = b.dependency("tommath", .{});
+
+            const tommath = b.addStaticLibrary(.{
+                .name = "tommath",
+                .target = target,
+                .optimize = optimize,
+            });
+            tommath.addCSourceFiles(.{
+                .root = tommath_dep.path(""),
+                .files = @import("./tommath_src.zig").files,
+                .flags = &.{
+                    "-Wall",                         "-Wsign-compare",
+                    "-Wextra",                       "-Wshadow",
+                    "-Wdeclaration-after-statement", "-Wbad-function-cast",
+                    "-Wcast-align",                  "-Wstrict-prototypes",
+                    "-Wpointer-arith",               "-Wsystem-headers",
+                    "-funroll-loops",                "-fomit-frame-pointer",
+                },
+            });
+            tommath.linkLibC();
+            tomcrypt.linkLibrary(tommath);
+            tomcrypt.addIncludePath(tommath_dep.path(""));
+        }
+        tomcrypt.addIncludePath(tomcrypt_dep.path("src/headers"));
+        tomcrypt.linkLibC();
+
+        storm.addIncludePath(tomcrypt_dep.path("src/headers"));
+        storm.linkLibrary(tomcrypt);
     }
-    // storm.addIncludePath(.{ .path = "src" });
+
     storm.linkLibCpp();
+    storm.installHeadersDirectory(.{ .path = "src" }, ".", .{});
     b.installArtifact(storm);
 }
