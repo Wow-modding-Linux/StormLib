@@ -457,7 +457,7 @@ static DWORD VerifyWeakSignature(
     // Verify the signature
     memcpy(RevSignature, &pSI->Signature[8], MPQ_WEAK_SIGNATURE_SIZE);
     memrev(RevSignature, MPQ_WEAK_SIGNATURE_SIZE);
-    rsa_verify_hash_ex(RevSignature, MPQ_WEAK_SIGNATURE_SIZE, Md5Digest, sizeof(Md5Digest), LTC_LTC_PKCS_1_V1_5, hash_idx, 0, &result, &key);
+    rsa_verify_hash_ex(RevSignature, MPQ_WEAK_SIGNATURE_SIZE, Md5Digest, sizeof(Md5Digest), LTC_PKCS_1_V1_5, hash_idx, 0, &result, &key);
     rsa_free(&key);
 
     // Return the result
@@ -480,7 +480,7 @@ static DWORD VerifyStrongSignatureWithKey(
     }
 
     // Verify the signature
-    if(rsa_verify_simple(reversed_signature, MPQ_STRONG_SIGNATURE_SIZE, padded_digest, MPQ_STRONG_SIGNATURE_SIZE, &result, &key) != CRYPT_OK)
+    if(rsa_verify_hash(reversed_signature, MPQ_STRONG_SIGNATURE_SIZE, padded_digest, MPQ_STRONG_SIGNATURE_SIZE, find_hash("sha1"), SHA1_DIGEST_SIZE, &result, &key) != CRYPT_OK)
         return ERROR_VERIFY_FAILED;
 
     // Free the key and return result
@@ -862,7 +862,7 @@ DWORD SSignFileFinish(TMPQArchive * ha)
 
     // Sign the hash
     memset(WeakSignature, 0, sizeof(WeakSignature));
-    rsa_sign_hash_ex(Md5Digest, sizeof(Md5Digest), WeakSignature + 8, &signature_len, LTC_LTC_PKCS_1_V1_5, 0, 0, hash_idx, 0, &key);
+    rsa_sign_hash_ex(Md5Digest, sizeof(Md5Digest), WeakSignature + 8, &signature_len, LTC_PKCS_1_V1_5, 0, 0, hash_idx, 0, &key);
 	memrev(WeakSignature + 8, MPQ_WEAK_SIGNATURE_SIZE);
     rsa_free(&key);
 
