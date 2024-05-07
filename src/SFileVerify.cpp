@@ -1056,4 +1056,3 @@ bool WINAPI SFileSignArchive(HANDLE hMpq, DWORD dwSignatureType)
 
     return true;
 }
-

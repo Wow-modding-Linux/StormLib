@@ -445,4 +445,3 @@ void DumpFileTable(TFileEntry * pFileTable, DWORD dwFileTableSize);
 #endif
 
 #endif // __STORMCOMMON_H__
-
